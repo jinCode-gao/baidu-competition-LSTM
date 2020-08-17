@@ -1,0 +1,137 @@
+import numpy as np
+import pandas as pd
+import csv
+import math
+from sklearn import preprocessing
+#A城
+def getdata():
+    def standardization(data):
+        mu = np.mean(data, axis=0)
+        sigma = np.std(data, axis=0)
+        return (data - mu) / sigma
+
+    n = 8  # 5个一节
+    areanum=118
+    infection_temp=np.loadtxt("./infection_sum_a.csv",delimiter=",",dtype="int")#输入1
+    new_temp=np.loadtxt("./infectionA.csv",delimiter=",",dtype="int")#输入2
+    infection_sum=np.loadtxt("./city_a_infection_sum.csv",delimiter=",",dtype="int")
+
+    j=1
+    k=0
+    input_1=np.zeros((44*areanum,1))
+    input_2=np.zeros((44*areanum,1))
+    for i in range(len(infection_temp[:,0])):
+        if j<45:
+            input_1[k,0]=infection_temp[i,2]
+            input_2[k, 0] = new_temp[i, 2]
+            j+=1
+            k+=1
+            continue
+        if j==45:
+            j=1
+
+    m_i=np.zeros((44*areanum,8))
+    m_i_big=pd.read_csv("migration_infection_city_sum_a.csv")
+    j=0
+
+    for i in range(m_i_big.shape[0]):
+        if i%8==4:#B
+            m_i[j,0]=m_i_big.loc[i,'migration']
+            m_i[j,1]=m_i_big.loc[i,'infection']
+        if i%8==5:#C
+            m_i[j,2]=m_i_big.loc[i,'migration']
+            m_i[j,3]=m_i_big.loc[i,'infection']
+        if i%8==6:#D
+            m_i[j,4]=m_i_big.loc[i,'migration']
+            m_i[j,5]=m_i_big.loc[i,'infection']
+        if i%8==7:#E
+            m_i[j,6]=m_i_big.loc[i,'migration']
+            m_i[j,7]=m_i_big.loc[i,'infection']
+            if j<44:
+                j+=1
+    input_4=m_i[:44,:]
+    input_7=np.zeros((44,4))
+    input_7[:,0]=input_4[:,0]
+    input_7[:, 1] = input_4[:, 2]
+    input_7[:, 2] = input_4[:, 4]
+    input_7[:, 3] = input_4[:, 6]
+    #截取
+    xr=0
+    j=0
+    input1=np.zeros(((45-n)*118,n,1))
+    input2=np.zeros(((45-n)*118,n,1))
+    input3=np.zeros(((45-n)*118,n,1))
+    input4=np.zeros(((45-n)*118,n,8))#m_i
+    input7=np.zeros(((45-n)*118,n,4))#m_i,删除了infection的4列
+    #input1,2截取
+    for i in range((45-n)*118):
+        input1[i]=input_1[xr:xr+n]
+        input2[i]=input_2[xr:xr+n]
+        if j>=45-n-1:
+            xr+=n
+            j=0
+        else:
+            j += 1
+            xr+=1
+
+    #input4截取
+    xr=0
+    for i in range(45-n):
+        input4[i]=input_4[xr:xr+n]
+        input7[i]=input_7[xr:xr+n]
+        xr+=1
+    i=45-n
+    while i<118*(45-n):
+        input4[i:i+45-n]=input4[0:45-n]
+        input7[i:i+45-n]=input7[0:45-n]
+        i+=45-n
+
+
+    #标签值获取
+    label1=np.zeros((118*(45-n),))
+    label2 = np.zeros((118 * (45-n),))
+    label4 = np.zeros((118 * (45-n),8))#m_i
+    label5=np.zeros((118 * (45-n),))  #比例
+    label7=np.zeros((118 * (45-n),4))#m_i,删除infection4列
+    j=1
+    k=0
+
+    for i in range(len(infection_temp[:,0])):
+        if new_temp[i,1] == 21200509:#修改n的时候需要修改此日期，9号对应n=8
+            print(i)
+            label1[k:k+45-n]=infection_temp[i:i+(45-n),2]
+            label2[k:k+45-n] = new_temp[i:i +(45-n), 2]
+            print(i)
+            k+=45-n
+    #计算label4
+    temp=m_i[n:45]
+    j=0
+    for i in range(118):
+        label4[j:j+(45-n)]=temp
+        j+=45-n
+    j=n
+    for i in range(118 * (45-n)):
+        label5[i]=float(label2[i])/float(infection_sum[i%(45-n)+n-1])
+        j+=1
+    # for i in range(118 * (45-n)):
+    #     label5[i]=math.log(label5[i])
+    label5_std=np.std(label5, ddof = 1)
+    label5_mean=label5.mean()
+    print(label5_mean)
+    print(label5_std)
+    #label5=standardization(label5)#标准化后的比例输出
+    label5=preprocessing.scale(label5)
+    print(label5[4000:])
+    label7[:,0]=label4[:,0]
+    label7[:,1]=label4[:,2]
+    label7[:,2]=label4[:,4]
+    label7[:,3]=label4[:,6]
+    # print(label7)
+    # print(label5[40*37:41*37])
+    return input1,input2,input4,input7,label1,label2,label4,label5,label7
+getdata()
+#input1:输入城市总感染人数
+#input2:输入新增人数
+#label5:标准化后的比例输出
+#label7:删除4列infection后的m_i
+
