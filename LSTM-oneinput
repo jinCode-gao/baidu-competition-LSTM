@@ -1,0 +1,73 @@
+import keras
+from keras.models import Sequential
+from keras import layers
+from keras.layers import Dense,Embedding, LSTM
+from keras import Input
+from keras.layers.normalization import BatchNormalization
+from keras.models import Sequential,Model
+from keras import backend as K
+from keras import regularizers
+import numpy as np
+from keras.optimizers import adam
+import pandas as pd
+import csv
+from keras import callbacks
+import getdata
+import city5datapinjie
+import getdatabiaozhunhuaA
+def mean_squared_logarithmic_error(y_true, y_pred):
+    return K.mean(K.square(K.log(K.abs(y_true-y_pred))))
+
+input1,input2,input4,input6,label1,label2,label4,label6=city5datapinjie.getdata()
+#输入
+#infection_input=Input(shape=(None,1))
+new_input=Input(shape=(None,1))
+#density_input=Input(shape=(None,1))
+#m_i_input=Input(shape=(None,8))
+#density_input=Input(shape=(None,1))
+
+#m=LSTM(128,input_shape=(None,8),return_sequences=True,activation="relu")(m_i_input)
+# m=LSTM(128,return_sequences=True,activation="relu")(m_i_input)
+# m=Dense(256,activation='relu')(m)
+# m=Dense(128,activation='relu')(m)
+# m=Dense(64,activation='relu')(m)
+# migration_output=Dense(1)(m)
+# infection_output=Dense(1)(m)
+
+#concatenated=layers.concatenate([new_input],axis=-1)
+
+x = LSTM(256,input_shape=(None,5),return_sequences=True,activation="relu")(new_input)
+# x = LSTM(128,return_sequences=True,activation="relu")(x)
+# x = LSTM(128,return_sequences=True,activation="relu")(x)
+# x = LSTM(128,return_sequences=True,activation="relu")(x)
+# x = LSTM(128,return_sequences=True,activation="relu")(x)
+# x = LSTM(128,return_sequences=True,activation="relu")(x)
+# x = LSTM(64,return_sequences=True,activation="relu")(x)
+
+x=LSTM(64,activation="relu")(x)
+
+#x=Dense(64, activation='relu')(x)
+x=Dense(64, activation='relu')(x)
+
+#输出
+#infection_prediction = Dense(1, name='infection')(x)
+new_prediction = Dense(1, name='new')(x)
+#m_i_prediction=Dense(8, name='m_i')(x)
+#density_prediction=Dense(1, name='density')(x)
+
+callback_list=[
+    callbacks.EarlyStopping(monitor="val_new_loss",patience=90),
+    callbacks.ModelCheckpoint(filepath="zhibing9_k8_morelstmA45.h5",monitor="val_new_loss",save_best_only=True),#zhibing9_k8_morelstm2
+    callbacks.ReduceLROnPlateau(monitor="loss_new_loss",factor=0.9,verbose=1,patience=10)
+]
+model = Model(inputs=[ new_input], outputs=[ new_prediction],name='m')
+model.summary()
+model.compile(optimizer=adam(), loss='mae')
+history1=model.fit([input1[:4366]], [label1[:4366]],epochs=6000, batch_size=128,callbacks=callback_list,validation_split=0.3)
+
+model.save("zhibing9_k8_morelstmA46.h5")
+new_loss=history1.history["loss"]
+val_new_loss=history1.history["val_loss"]
+np.savetxt("new_loss.csv",new_loss,fmt="%.4f",delimiter=",")
+np.savetxt("val_new_loss.csv",val_new_loss,fmt="%.4f",delimiter=",")
+
