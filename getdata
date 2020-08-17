@@ -1,0 +1,113 @@
+import numpy as np
+import pandas as pd
+import csv
+from sklearn import preprocessing
+
+#A城
+def getdata():
+    n = 8  # n个一节
+    areanum=118
+    infection_temp=np.loadtxt("./infection_sum_a.csv",delimiter=",",dtype="int")#输入1
+    new_temp=np.loadtxt("./infectionA.csv",delimiter=",",dtype="int")#输入2
+    density=np.loadtxt("./densityA_yichazhi.csv",delimiter=",",dtype="float32")#输入6
+
+    density2=np.zeros((areanum*45,2))
+    density2[:,0]=new_temp[:,1]
+    density2[:,1]=density[:]
+
+    j=1
+    k=0
+    input_1=np.zeros((44*areanum,1))
+    input_2=np.zeros((44*areanum,1))
+    input_6=np.zeros((44*areanum,1))
+    for i in range(len(infection_temp[:,0])):
+        if j<45:
+            input_1[k,0]=infection_temp[i,2]
+            input_2[k, 0] = new_temp[i, 2]
+            input_6[k, 0] = density2[i, 1]
+            j+=1
+            k+=1
+            continue
+        if j==45:
+            j=1
+
+    m_i=np.zeros((44*areanum,8))
+    m_i_big=pd.read_csv("migration_infection_city_sum_b.csv")
+
+    j=0
+
+    for i in range(m_i_big.shape[0]):
+        if i%8==4:#B
+            m_i[j,0]=m_i_big.loc[i,'migration']
+            m_i[j,1]=m_i_big.loc[i,'infection']
+        if i%8==5:#C
+            m_i[j,2]=m_i_big.loc[i,'migration']
+            m_i[j,3]=m_i_big.loc[i,'infection']
+        if i%8==6:#D
+            m_i[j,4]=m_i_big.loc[i,'migration']
+            m_i[j,5]=m_i_big.loc[i,'infection']
+        if i%8==7:#E
+            m_i[j,6]=m_i_big.loc[i,'migration']
+            m_i[j,7]=m_i_big.loc[i,'infection']
+            if j<44:
+                j+=1
+    input_4=m_i[:44,:]
+    #截取
+    xr=0
+    j=0
+    input1=np.zeros(((45-n)*118,n,1))
+    input2=np.zeros(((45-n)*118,n,1))
+    input3=np.zeros(((45-n)*118,n,1))
+    input4=np.zeros(((45-n)*118,n,8))
+    input6=np.zeros(((45-n)*118,n,1))
+
+    #input1,2,6截取
+    for i in range((45-n)*118):
+        input1[i]=input_1[xr:xr+n]
+        input2[i]=input_2[xr:xr+n]
+        input6[i] = input_6[xr:xr + n]
+        if j>=45-n-1:
+            xr+=n
+            j=0
+        else:
+            j += 1
+            xr+=1
+
+    #input4截取
+    xr=0
+    for i in range(45-n):
+        input4[i]=input_4[xr:xr+n]
+        xr+=1
+    i=45-n
+    while i<118*(45-n):
+        input4[i:i+45-n]=input4[0:45-n]
+        i+=45-n
+
+
+    #标签值获取
+    label1=np.zeros((118*(45-n),))
+    label2 = np.zeros((118 * (45-n),))
+    label4 = np.zeros((118 * (45-n),8))
+    label6 = np.zeros((118 * (45 - n),))
+    j=1
+    k=0
+
+    #计算label1 2 6
+    for i in range(len(infection_temp[:,0])):
+        if new_temp[i,1] == 21200509:#修改n的时候需要修改此日期，9号对应n=8
+            label1[k:k+45-n]=infection_temp[i:i+(45-n),2]
+            label2[k:k+45-n] = new_temp[i:i +(45-n), 2]
+            label6[k:k+45-n]=density2[i:i +(45-n), 1]
+            k+=45-n
+
+    #计算label4
+    temp=m_i[n:45]
+    j=0
+    for i in range(118):
+        label4[j:j+(45-n)]=temp
+        j+=45-n
+
+
+    return input1,input2,input4,input6,label1,label2,label4,label6
+
+
